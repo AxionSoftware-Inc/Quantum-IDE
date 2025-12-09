@@ -7,6 +7,8 @@ class TopMenuBar extends StatelessWidget {
   final VoidCallback onOpenFolder;
   final VoidCallback onSave;
   final VoidCallback onRun;
+  final VoidCallback onInstallDeps;
+
 
   const TopMenuBar({
     super.key,
@@ -15,6 +17,7 @@ class TopMenuBar extends StatelessWidget {
     required this.onOpenFolder,
     required this.onSave,
     required this.onRun,
+    required this.onInstallDeps,
   });
 
   @override
@@ -60,12 +63,22 @@ class TopMenuBar extends StatelessWidget {
             ]
         ),
 
-        // 4. HELP MENU
         _buildMenuButton(
             context,
             "Help",
             [
               _menuItem("About Quantum IDE", Icons.info_outline, () {}),
+            ]
+        ),
+
+        _buildMenuButton(
+            context,
+            "Tools",
+            [
+              _menuItem("Install Qiskit & Matplotlib", Icons.download, () {
+                // Bu funksiyani MainLayout dan olib kelasiz
+                onInstallDeps();
+              }),
             ]
         ),
       ],

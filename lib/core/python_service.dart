@@ -1,6 +1,8 @@
 import 'package:process_run/shell.dart';
 import 'dart:io';
 
+import 'launcher_script.dart';
+
 // Javob uchun maxsus quti
 class RunResult {
   final String output;
@@ -12,22 +14,20 @@ class RunResult {
 }
 
 class PythonService {
-  static Future<RunResult> runScript(File scriptFile) async {
-    var shell = Shell(throwOnError: false); // Xato bo'lsa ham dastur to'xtamasin
+  static Future<RunResult> runScript(File userCodeFile) async {
+    var shell = Shell(throwOnError: false);
 
     try {
-      // Dasturni yurgizamiz
-      var result = await shell.run('python "${scriptFile.path}"');
+      final dir = userCodeFile.parent;
+      final launcherFile = File('${dir.path}/ide_launcher.py');
+      await launcherFile.writeAsString(LauncherScript.content);
+      var result = await shell.run('python "${launcherFile.path}" "${userCodeFile.path}"');
 
-      // process_run ro'yxat qaytaradi, bizga birinchisi kerak
       final processResult = result.first;
+      return RunResult(output: processResult.outText, error: processResult.errText);
 
-      return RunResult(
-        output: processResult.outText,
-        error: processResult.errText,
-      );
     } catch (e) {
-      return RunResult(output: "", error: "Tizim xatosi: $e");
+      return RunResult(output: "", error: "Run Error: $e");
     }
   }
 

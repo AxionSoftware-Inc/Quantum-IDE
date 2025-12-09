@@ -1,111 +1,107 @@
-import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Yangi fayllarni ulaymiz
+import 'histogram_widget.dart';
+import 'matrix_widget.dart';
+
 class VisualizerWidget extends StatelessWidget {
-  final Map<String, dynamic> data; // Masalan: {"00": 512, "11": 480}
+  final Map<String, dynamic> data;
 
   const VisualizerWidget({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    if (data.isEmpty) {
-      return Center(
-        child: Text(
-          "Grafik chizish uchun ma'lumot yo'q.\nKodni ishga tushiring.",
-          textAlign: TextAlign.center,
-          style: GoogleFonts.robotoMono(color: Colors.white24),
-        ),
-      );
-    }
-
-    // 1. Ma'lumotlarni tayyorlash
-    final List<String> keys = data.keys.toList();
-    final List<int> values = data.values.map((e) => e as int).toList();
-    // Eng katta qiymatni topamiz (Grafik shifti uchun)
-    final int maxY = values.reduce((curr, next) => curr > next ? curr : next);
+    if (data.isEmpty) return _buildEmptyState();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
       color: const Color(0xFF1E1E1E),
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxY * 1.2, // Tepada ozgina joy qolsin
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // HEADER
+          Text("SIMULATION RESULTS", style: GoogleFonts.robotoMono(color: Colors.grey, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
 
-          // 2. Tepa va O'ng chiziqlarni olib tashlash
-          borderData: FlBorderData(show: false),
-          gridData: const FlGridData(show: false), // Setkani o'chiramiz
+          // 1. GISTOGRAMMA (Histogram)
+          _buildCard("Probabilities (Histogram)", AspectRatio(
+            aspectRatio: 1.5,
+            // Agar histogram ma'lumoti bo'lsa, widgetni chaqiramiz
+            child: data.containsKey('histogram')
+                ? HistogramWidget(data: data['histogram'])
+                : HistogramWidget(data: data), // Eski format uchun fallback
+          )),
 
-          // 3. Pastki yozuvlar (00, 01, 10...)
-          titlesData: FlTitlesData(
-            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  if (value.toInt() < keys.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        keys[value.toInt()],
-                        style: GoogleFonts.robotoMono(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+          // 2. MATRITSA (Density Matrix)
+          if (data.containsKey('matrix'))
+            _buildCard("Density Matrix (Heatmap)", SizedBox(
+              height: 350, // Kvadratga yaqin joy ajratamiz
+              child: MatrixWidget(data: data['matrix']),
+            )),
+
+          // 3. BLOCH SFERA (Rasm)
+          if (data.containsKey('bloch_image'))
+            _buildCard("Bloch Sphere", _buildImage(data['bloch_image'])),
+
+          // 4. SXEMA (Circuit) - Kelajak uchun
+          if (data.containsKey('circuit_image'))
+            _buildCard("Quantum Circuit", _buildImage(data['circuit_image'])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(String title, Widget content) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252526),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Colors.white10)),
             ),
-          ),
-
-          // 4. Sichqoncha borganda chiqadigan ma'lumot (Tooltip)
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              // tooltipBgColor: Colors.deepPurple,
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                String key = keys[group.x.toInt()];
-                return BarTooltipItem(
-                  '$key\n',
-                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  children: [
-                    TextSpan(
-                      text: (rod.toY.toInt()).toString(),
-                      style: const TextStyle(color: Colors.yellowAccent),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          // 5. Ustunlar (Bars)
-          barGroups: List.generate(keys.length, (index) {
-            return BarChartGroupData(
-              x: index,
-              barRods: [
-                BarChartRodData(
-                  toY: values[index].toDouble(),
-                  color: const Color(0xFF6933FF), // Qiskit Purple rangi
-                  width: 25,
-                  borderRadius: BorderRadius.circular(4),
-                  // Orqa fon (bo'sh joy)
-                  backDrawRodData: BackgroundBarChartRodData(
-                    show: true,
-                    toY: maxY * 1.2,
-                    color: Colors.white.withOpacity(0.05),
-                  ),
-                ),
+            child: Row(
+              children: [
+                const Icon(Icons.analytics_outlined, size: 16, color: Colors.purpleAccent),
+                const SizedBox(width: 8),
+                Text(title, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
               ],
-            );
-          }),
-        ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: content,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImage(String? base64String) {
+    if (base64String == null || base64String.isEmpty) return const SizedBox.shrink();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: Image.memory(base64Decode(base64String), fit: BoxFit.contain),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.auto_awesome_mosaic, size: 60, color: Colors.white10),
+          const SizedBox(height: 10),
+          Text("No Visualization Data", style: GoogleFonts.robotoMono(color: Colors.white24)),
+        ],
       ),
     );
   }
