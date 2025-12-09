@@ -29,7 +29,16 @@ class MatrixWidget extends StatelessWidget {
         }
       });
     } catch (e) {
-      return Center(child: Text("Error: $e", style: const TextStyle(color: Colors.red)));
+      // Qizil ekran o'rniga chiroyli xabar
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text("Matritsani chizib bo'lmadi.\nSabab: $e",
+            style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
     }
 
     // 2. LIMIT TEKSHIRUVI (64x64 dan katta bo'lsa chizmaymiz)
