@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:code_text_field/code_text_field.dart';
 import 'package:flutter/material.dart';
-import 'package:code_text_field/code_text_field.dart';
 import 'package:highlight/languages/python.dart';
 import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,7 +65,7 @@ class _IdeScreenState extends State<IdeScreen> {
     }
   }
 
-  // --- 3. YURGIZISH (RUN) ---
+  // --- 3. YURGIZISH (RUN) - TUZATILGAN QISM ---
   Future<void> runPythonCode() async {
     setState(() {
       _isLoading = true;
@@ -74,14 +73,21 @@ class _IdeScreenState extends State<IdeScreen> {
     });
 
     try {
-      // 1. Kodni vaqtincha faylga yozamiz (Core papkasidagi funksiya)
+      // 1. Vaqtincha fayl yaratamiz
       final tempFile = await FileService.saveCode(_codeController!.text, 'temp_script.py');
 
       // 2. Pythonni ishga tushiramiz
+      // TUZATISH 1: .path emas, faylning o'zini beramiz (chunki PythonService shuni kutadi)
       final result = await PythonService.runScript(tempFile);
 
       setState(() {
-        _output = result.isEmpty ? "[Dastur ishlamadi yoki hech narsa chop etmadi]" : result;
+        // TUZATISH 2: result.isEmpty emas, result.output.isEmpty bo'lishi kerak
+        // Chunki result bu RunResult obyekti.
+        if (result.error.isNotEmpty) {
+          _output = "Xatolik:\n${result.error}";
+        } else {
+          _output = result.output.isEmpty ? "[Bo'sh natija]" : result.output;
+        }
       });
 
     } catch (e) {
@@ -94,7 +100,6 @@ class _IdeScreenState extends State<IdeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // --- TEPA QISM (APPBAR) ---
       appBar: AppBar(
         title: Text(
           _currentFilePath ?? "Nomsiz Loyiha",
@@ -106,7 +111,6 @@ class _IdeScreenState extends State<IdeScreen> {
           _buildActionButton(Icons.folder_open, "Ochish", openFile),
           _buildActionButton(Icons.save, "Saqlash", saveFile),
           const SizedBox(width: 20),
-          // RUN TUGMASI
           Container(
             margin: const EdgeInsets.only(right: 10),
             child: IconButton(
@@ -114,21 +118,21 @@ class _IdeScreenState extends State<IdeScreen> {
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.play_arrow, color: Colors.greenAccent, size: 32),
               onPressed: _isLoading ? null : runPythonCode,
-              tooltip: "Ishga tushirish (Run)",
+              tooltip: "Run",
             ),
           ),
         ],
       ),
-
-      // --- ASOSIY QISM (BODY) ---
       body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Hamma ustunlar to'liq balandlikda bo'ladi
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
-          // 1. CHAP: FAYLLAR (Qizil chegara yo'q, chiroyli kulrang)
+          // 1. CHAP TOMON
           Container(
-            width: 250, // Qat'iy o'lcham (uchib ketmasligi uchun)
-            color: const Color(0xFF1E1E1E),
+            width: 250,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E), // TUZATISH: Rangni decoration ichiga oldik
+              border: Border(right: BorderSide(color: Colors.white10)),
+            ),
             child: Column(
               children: [
                 Container(
@@ -138,46 +142,46 @@ class _IdeScreenState extends State<IdeScreen> {
                   child: const Text("LOYIHA FAYLLARI", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ),
                 const Expanded(
-                  child: Center(child: Text("Fayllar ro'yxati\n(Tez orada...)", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey))),
+                  child: Center(child: Text("Fayllar ro'yxati...", style: TextStyle(color: Colors.grey))),
                 ),
               ],
             ),
           ),
 
-          // 2. O'RTA: KOD EDITOR
+          // 2. O'RTA (EDITOR)
           Expanded(
-            flex: 2, // Ekranning katta qismini egallaydi
+            flex: 2,
             child: CodeTheme(
               data: CodeThemeData(styles: monokaiSublimeTheme),
               child: CodeField(
                 controller: _codeController!,
                 textStyle: GoogleFonts.getFont('JetBrains Mono', fontSize: 16),
-                expands: true, // Editor butun bo'sh joyni egallaydi
+                expands: true,
                 wrap: false,
               ),
             ),
           ),
 
-          // 3. O'NG: TERMINAL
+          // 3. O'NG (TERMINAL)
           Container(
-            width: 300, // Qat'iy o'lcham
-            color: const Color(0xFF1E1E1E),
+            width: 300,
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E1E1E), // TUZATISH: Rangni decoration ichiga oldik
+              border: Border(left: BorderSide(color: Colors.white10)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Terminal sarlavhasi
                 Container(
                   padding: const EdgeInsets.all(10),
                   color: const Color(0xFF252526),
-                  child: const Text("TERMINAL / NATIJA", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  child: const Text("TERMINAL", style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ),
-                // Natija matni
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(10),
-                    color: Colors.black, // Terminal qora bo'lishi kerak
                     child: SingleChildScrollView(
-                      child: SelectableText( // Matnni nusxalab olish uchun
+                      child: SelectableText(
                         _output,
                         style: GoogleFonts.robotoMono(color: Colors.white70, fontSize: 14),
                       ),
@@ -192,7 +196,6 @@ class _IdeScreenState extends State<IdeScreen> {
     );
   }
 
-  // Kichik yordamchi vidjet (Tugmalar uchun)
   Widget _buildActionButton(IconData icon, String tooltip, VoidCallback onPressed) {
     return IconButton(
       icon: Icon(icon, color: Colors.white70),

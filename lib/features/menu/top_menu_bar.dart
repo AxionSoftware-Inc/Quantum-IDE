@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
 class TopMenuBar extends StatelessWidget {
-  // Bizga kerak bo'lgan buyruqlar
   final VoidCallback onNewFile;
   final VoidCallback onOpenFile;
   final VoidCallback onOpenFolder;
   final VoidCallback onSave;
   final VoidCallback onRun;
-  final VoidCallback onInstallDeps;
-
+  final VoidCallback onInstallDeps; // <--- BU YETISHMAYOTGAN EDI
 
   const TopMenuBar({
     super.key,
@@ -17,82 +15,46 @@ class TopMenuBar extends StatelessWidget {
     required this.onOpenFolder,
     required this.onSave,
     required this.onRun,
-    required this.onInstallDeps,
+    required this.onInstallDeps, // <--- QO'SHDIK
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // 1. FILE MENU
-        _buildMenuButton(
-            context,
-            "File",
-            [
-              _menuItem("New File", Icons.note_add_outlined, onNewFile),
-              _menuItem("Open File...", Icons.file_open_outlined, onOpenFile),
-              _menuItem("Open Folder...", Icons.folder_open_outlined, onOpenFolder),
-              const PopupMenuDivider(), // Chiziq
-              _menuItem("Save", Icons.save_outlined, onSave),
-              const PopupMenuDivider(),
-              _menuItem("Exit", Icons.exit_to_app, () {}), // Hozircha bo'sh
-            ]
-        ),
-
-        // 2. EDIT MENU (Hozircha shunchaki ko'rinish uchun)
-        _buildMenuButton(
-            context,
-            "Edit",
-            [
-              _menuItem("Undo", Icons.undo, () {}),
-              _menuItem("Redo", Icons.redo, () {}),
-              const PopupMenuDivider(),
-              _menuItem("Cut", Icons.content_cut, () {}),
-              _menuItem("Copy", Icons.content_copy, () {}),
-              _menuItem("Paste", Icons.content_paste, () {}),
-            ]
-        ),
-
-        // 3. RUN MENU
-        _buildMenuButton(
-            context,
-            "Run",
-            [
-              _menuItem("Run Python Code", Icons.play_arrow, onRun),
-              _menuItem("Debug", Icons.bug_report, () {}),
-            ]
-        ),
-
-        _buildMenuButton(
-            context,
-            "Help",
-            [
-              _menuItem("About Quantum IDE", Icons.info_outline, () {}),
-            ]
-        ),
-
-        _buildMenuButton(
-            context,
-            "Tools",
-            [
-              _menuItem("Install Qiskit & Matplotlib", Icons.download, () {
-                // Bu funksiyani MainLayout dan olib kelasiz
-                onInstallDeps();
-              }),
-            ]
-        ),
+        _buildMenuButton(context, "File", [
+          _menuItem("New File", Icons.note_add_outlined, onNewFile),
+          _menuItem("Open File...", Icons.file_open_outlined, onOpenFile),
+          _menuItem("Open Folder...", Icons.folder_open_outlined, onOpenFolder),
+          const PopupMenuDivider(),
+          _menuItem("Save", Icons.save_outlined, onSave),
+          const PopupMenuDivider(),
+          _menuItem("Exit", Icons.exit_to_app, () {}),
+        ]),
+        _buildMenuButton(context, "Edit", [
+          _menuItem("Undo", Icons.undo, () {}),
+          _menuItem("Redo", Icons.redo, () {}),
+        ]),
+        _buildMenuButton(context, "Run", [
+          _menuItem("Run Python Code", Icons.play_arrow, onRun),
+        ]),
+        _buildMenuButton(context, "Tools", [
+          _menuItem("Install Libraries", Icons.download, onInstallDeps), // <--- ISHLATDIK
+        ]),
+        _buildMenuButton(context, "Help", [
+          _menuItem("About", Icons.info_outline, () {}),
+        ]),
       ],
     );
   }
 
-  // Menyu tugmasini yasovchi
   Widget _buildMenuButton(BuildContext context, String title, List<PopupMenuEntry> items) {
     return Theme(
       data: Theme.of(context).copyWith(
-        popupMenuTheme: const PopupMenuThemeData(color: Color(0xFF252526)), // Menyu foni
+        popupMenuTheme: const PopupMenuThemeData(color: Color(0xFF252526)),
       ),
       child: PopupMenuButton(
-        offset: const Offset(0, 30), // Tugmadan sal pastroqda ochilsin
+        offset: const Offset(0, 30),
         itemBuilder: (context) => items,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -102,7 +64,6 @@ class TopMenuBar extends StatelessWidget {
     );
   }
 
-  // Menyu ichidagi har bir qator
   PopupMenuItem _menuItem(String title, IconData icon, VoidCallback onTap) {
     return PopupMenuItem(
       height: 35,
