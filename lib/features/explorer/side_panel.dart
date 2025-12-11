@@ -1,90 +1,128 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'file_tree_widget.dart'; // Fayl daraxtini shu yerga chaqiramiz
 
-class SidePanel extends StatelessWidget {
+class SidePanel extends StatefulWidget {
   final int selectedIndex;
   final String? projectPath;
-  final VoidCallback onOpenFolder; // Papka ochish tugmasi uchun
+  final VoidCallback onOpenFolder;
   final Function(String) onFileClick;
 
   const SidePanel({
     super.key,
     required this.selectedIndex,
-    this.projectPath,
+    required this.projectPath,
     required this.onOpenFolder,
     required this.onFileClick,
   });
 
   @override
+  State<SidePanel> createState() => _SidePanelState();
+}
+
+class _SidePanelState extends State<SidePanel> {
+  List<FileSystemEntity> _files = [];
+
+  @override
+  void didUpdateWidget(covariant SidePanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.projectPath != oldWidget.projectPath) {
+      _loadFiles();
+    }
+  }
+
+  void _loadFiles() {
+    if (widget.projectPath == null) return;
+    final dir = Directory(widget.projectPath!);
+    if (dir.existsSync()) {
+      setState(() {
+        _files = dir.listSync()
+          ..sort((a, b) => a.path.compareTo(b.path)); // Alifbo bo'yicha
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Agar Explorer tanlanmagan bo'lsa (boshqa tablar uchun)
+    if (widget.selectedIndex != 0) {
+      return Container(color: const Color(0xFF1E1E1E));
+    }
+
     return Container(
-      width: 250, // Qat'iy o'lcham
-      color: const Color(0xFF252526),
+      color: const Color(0xFF1E1E1E), // Panel foni
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Sarlavha (EXPLORER, SEARCH...)
+          // 1. HEADER (Sarlavha - Bitta bo'lishi kerak)
           Container(
-            height: 35,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            alignment: Alignment.centerLeft,
-            color: const Color(0xFF1E1E1E), // Biroz to'qroq
-            child: Text(
-                _getTitle(selectedIndex),
-                style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            color: const Color(0xFF252526),
+            width: double.infinity,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("EXPLORER", style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                if (widget.projectPath != null)
+                  const Icon(Icons.more_horiz, size: 16, color: Colors.white30),
+              ],
             ),
           ),
 
-          // O'zgaruvchan qism
+          // 2. FAYLLAR RO'YXATI
           Expanded(
-            child: _buildContent(),
+            child: widget.projectPath == null
+                ? Center(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.folder_open, size: 16),
+                label: const Text("Open Folder"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: widget.onOpenFolder,
+              ),
+            )
+                : ListView.builder(
+              itemCount: _files.length,
+              // FAYLLAR ORASINI ZICH QILISH SIRI SHU YERDA:
+              padding: EdgeInsets.zero,
+              itemExtent: 28, // Har bir qator balandligi (juda ixcham)
+              itemBuilder: (context, index) {
+                final file = _files[index];
+                final name = file.path.split(Platform.pathSeparator).last;
+                final isFile = FileSystemEntity.isFileSync(file.path);
+
+                return InkWell(
+                  onTap: () {
+                    if (isFile) widget.onFileClick(file.path);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Row(
+                      children: [
+                        Icon(
+                          isFile ? Icons.description_outlined : Icons.folder,
+                          size: 16,
+                          color: isFile ? Colors.lightBlueAccent : Colors.amber,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
-  }
-
-  String _getTitle(int index) {
-    switch (index) {
-      case 0: return "EXPLORER";
-      case 1: return "SEARCH";
-      case 2: return "QUANTUM DEVICES";
-      case 3: return "SETTINGS";
-      default: return "";
-    }
-  }
-
-  Widget _buildContent() {
-    // 0-TAB: Fayllar
-    if (selectedIndex == 0) {
-      if (projectPath == null) {
-        // Agar papka tanlanmagan bo'lsa -> Tugma ko'rsatamiz
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("Loyiha ochilmagan", style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: onOpenFolder,
-                child: const Text("Papka Ochish"),
-              )
-            ],
-          ),
-        );
-      }
-      // Agar papka bor bo'lsa -> Daraxtni ko'rsatamiz
-      return FileTreeWidget(
-          rootPath: projectPath!,
-          onFileClick: onFileClick
-      );
-    }
-
-    // 1-TAB: Qidiruv (Hozircha bo'sh)
-    if (selectedIndex == 1) {
-      return const Center(child: Text("Qidiruv tez orada...", style: TextStyle(color: Colors.grey)));
-    }
-
-    // Boshqalar
-    return const Center(child: Text("Bo'lim topilmadi", style: TextStyle(color: Colors.grey)));
   }
 }

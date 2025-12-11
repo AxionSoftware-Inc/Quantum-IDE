@@ -1,56 +1,90 @@
 import 'dart:convert';
 
 class ParsedData {
-  final String logOutput; // Terminalga chiqadigan oddiy matn
-  final Map<String, dynamic>? visualizationData; // Grafiklar uchun ma'lumot
+  final String logOutput;
+  final Map<String, dynamic>? visualizationData;
 
   ParsedData({required this.logOutput, this.visualizationData});
 }
 
 class OutputParser {
-  static const String _dataTag = "__DATA__: ";
+  static const String _tag = "__DATA__:";
 
-  // Asosiy sehrgar funksiya
-  static ParsedData parse(String rawOutput) {
-    // 1. Agar ma'lumot signalini o'z ichiga olmasa -> Shunchaki matn
-    if (!rawOutput.contains(_dataTag)) {
-      return ParsedData(logOutput: rawOutput);
+  static ParsedData parse(String text) {
+    if (!text.contains(_tag)) {
+      return ParsedData(logOutput: text);
     }
 
-    // 2. Matnni va JSONni ajratamiz
-    try {
-      final parts = rawOutput.split(_dataTag);
-      final logPart = parts[0]; // "Hisoblash tugadi..." degan qism
-      final jsonPart = parts[1].trim(); // JSON qismi
+    String cleanLog = text;
+    final Map<String, dynamic> mergedData = {};
 
-      // 3. JSONni o'qiymiz
-      final Map<String, dynamic> rawJson = jsonDecode(jsonPart);
+    // Matn ichidan barcha __DATA__ larni qidiramiz
+    int startIndex = 0;
+    while (true) {
+      // 1. __DATA__: ni topamiz
+      final tagIndex = text.indexOf(_tag, startIndex);
+      if (tagIndex == -1) break;
 
-      // 4. Ma'lumotlarni standartlashtiramiz (Heatmap ishlashi uchun!)
-      final processedData = _normalizeData(rawJson);
+      // 2. JSON boshlanadigan joyni topamiz ('{' belgisi)
+      final jsonStartIndex = text.indexOf('{', tagIndex);
+      if (jsonStartIndex == -1) {
+        startIndex = tagIndex + 1;
+        continue;
+      }
 
-      return ParsedData(
-          logOutput: logPart,
-          visualizationData: processedData
-      );
+      // 3. JSONning tugashini topish (Qavslarni sanash orqali)
+      // Bu juda muhim, chunki JSON ichida ham qavslar bo'lishi mumkin
+      int braceCount = 0;
+      int jsonEndIndex = -1;
 
-    } catch (e) {
-      return ParsedData(
-          logOutput: "$rawOutput\n\n[Parse Error]: JSON o'qishda xatolik: $e"
-      );
+      for (int i = jsonStartIndex; i < text.length; i++) {
+        if (text[i] == '{') braceCount++;
+        else if (text[i] == '}') braceCount--;
+
+        if (braceCount == 0) {
+          jsonEndIndex = i + 1; // Tugadi
+          break;
+        }
+      }
+
+      if (jsonEndIndex != -1) {
+        // 4. JSONni qirqib olamiz va o'qiymiz
+        try {
+          final jsonString = text.substring(jsonStartIndex, jsonEndIndex);
+          final data = jsonDecode(jsonString) as Map<String, dynamic>;
+
+          // Ma'lumotlarni birlashtiramiz
+          mergedData.addAll(data);
+
+          // Logdan bu qismni o'chiramiz (terminalni toza saqlash uchun)
+          cleanLog = cleanLog.replaceFirst(text.substring(tagIndex, jsonEndIndex), "[DATA RECEIVED]");
+        } catch (e) {
+          print("JSON Parse Error: $e");
+        }
+        // Keyingisini qidirish uchun
+        startIndex = jsonEndIndex;
+      } else {
+        startIndex = tagIndex + 1;
+      }
     }
+
+    // 5. Ma'lumotlarni normalizatsiya qilish
+    final finalData = _normalizeData(mergedData);
+
+    return ParsedData(
+      logOutput: cleanLog.trim(), // Ortiqcha bo'shliqlarsiz log
+      visualizationData: finalData.isNotEmpty ? finalData : null,
+    );
   }
 
-  // Ma'lumot yetishmasa, to'ldirib qo'yadigan yordamchi
   static Map<String, dynamic> _normalizeData(Map<String, dynamic> data) {
-    // Agar faqat histogram kelsa, uni o'z joyiga qo'yamiz
-    if (!data.containsKey('histogram') && !data.containsKey('matrix')) {
-      // Demak bu eski format {"00": 50}, uni histogram ichiga solamiz
-      return {
-        'histogram': data,
-        'matrix': null, // Matritsa yo'q
-        'bloch_image': null
-      };
+    if (data.isEmpty) return {};
+    bool isStandard = data.containsKey('histogram') ||
+        data.containsKey('matrix') ||
+        data.containsKey('circuit_image') ||
+        data.containsKey('bloch_image');
+    if (!isStandard) {
+      return {'histogram': data, 'matrix': null};
     }
     return data;
   }
