@@ -49,7 +49,12 @@ class _SidePanelState extends State<SidePanel> {
     }
 
     return Container(
-      color: const Color(0xFF1E1E1E), // Panel foni
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E), // Panel foni
+        border: Border(
+          right: BorderSide(color: Colors.white10, width: 1), // <--- MANA SHU CHEGARA AJRATIB TURADI
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

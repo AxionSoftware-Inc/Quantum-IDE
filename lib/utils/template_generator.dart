@@ -1,6 +1,32 @@
+// lib/utils/template_generator.dart
+
 class TemplateGenerator {
+
+  /// Bu funksiya Python kodining tepasiga yoziladigan
+  /// maxsus yordamchi funksiyalarimiz.
+  static String get _pythonHelperFunctions => '''
+import json
+
+# --- Q IDE HELPER FUNCTIONS ---
+def show_result(data, title="Quantum Result"):
+    """
+    Ma'lumotlarni IDE ga vizualizatsiya qilish uchun yuborish.
+    """
+    # Bu formatni bizning Dartdagi OutputParser tushunadi
+    output = {
+        "type": "histogram",
+        "data": data,
+        "title": title
+    }
+    # Maxsus prefiks bilan print qilamiz
+    print(json.dumps(output))
+# ------------------------------
+''';
+
   static String generateGHZState(int qubits) {
     return '''
+$_pythonHelperFunctions
+
 import numpy as np
 from qiskit import QuantumCircuit, transpile
 from qiskit_aer import AerSimulator
@@ -28,7 +54,11 @@ compiled_circuit = transpile(qc, simulator)
 result = simulator.run(compiled_circuit, shots=1024).result()
 counts = result.get_counts()
 
-print("Natijalar (Counts):", counts)
+# --- NATIJANI CHIQARISH ---
+print("Raw Counts:", counts)
+
+# Mana bizning funksiyamiz!
+show_result(counts) 
 ''';
   }
 }
